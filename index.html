@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Manager 2026</title>
+
+<!-- ══ MSAL (Microsoft Authentication) ══ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library/3.14.0/msal-browser.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════
+   TOKENS & RESET
+══════════════════════════════════════ */
+:root {
+  --ink:    #0f1117;
+  --ink2:   #1c1f2b;
+  --ink3:   #2a2e3f;
+  --paper:  #f7f5f0;
+  --cream:  #ede9e0;
+  --white:  #ffffff;
+  --gold:   #c5a84f;
+  --gold2:  #e6cc80;
+  --red:    #b83030;
+  --red2:   #f0e8e8;
+  --green:  #2a6e47;
+  --green2: #e5f0ea;
+  --blue:   #1e50a0;
+  --blue2:  #e6edf8;
+  --warn:   #a05010;
+  --warn2:  #fdf0e0;
+  --border: rgba(15,17,23,0.10);
+  --sh:     0 2px 20px rgba(15,17,23,0.08);
+  --sh2:    0 4px 32px rgba(15,17,23,0.14);
+  --r:      5px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);font-size:15px}
+
+/* ══════════════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════════════ */
+#loginScreen {
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: var(--ink2);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 80%, rgba(197,168,79,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(30,80,160,0.12) 0%, transparent 60%);
+}
+.login-card {
+  background: var(--white);
+  border-radius: 8px;
+  box-shadow: var(--sh2);
+  padding: 3rem 2.75rem;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  animation: cardIn 0.5s cubic-bezier(.22,.68,0,1.2) both;
+}
+@keyframes cardIn { from{opacity:0;transform:translateY(24px) scale(0.97)} to{opacity:1;transform:none} }
+.login-logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 2rem;
+  color: var(--ink);
+  margin-bottom: 0.2rem;
+}
+.login-logo span { color: var(--gold); }
+.login-year {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(15,17,23,0.35);
+  margin-bottom: 2rem;
+}
+.login-divider { height: 1px; background: var(--border); margin: 1.75rem 0; }
+.login-sub {
+  font-size: 0.82rem;
+  color: rgba(15,17,23,0.45);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+.btn-ms {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  background: #0078d4;
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-ms:hover { background: #005fa3; transform: translateY(-1px); }
+.btn-ms:active { transform: translateY(0); }
+.btn-ms svg { flex-shrink: 0; }
+.login-config-notice {
+  margin-top: 1.25rem;
+  font-size: 0.72rem;
+  color: rgba(15,17,23,0.35);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.05em;
+}
+.login-config-notice a { color: var(--blue); text-decoration: none; }
+.login-config-notice a:hover { text-decoration: underline; }
+#loginError {
+  display: none;
+  margin-top: 1rem;
+  padding: 0.65rem 0.9rem;
+  background: var(--red2);
+  border-left: 3px solid var(--red);
+  border-radius: 0 var(--r) var(--r) 0;
+  font-size: 0.78rem;
+  color: var(--red);
+  text-align: left;
+}
+
+/* CONFIG MODAL */
+#configModal {
+  display: none;
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(15,17,23,0.6);
+  backdrop-filter: blur(4px);
+  align-items: center;
+  justify-content: center;
+}
+#configModal.open { display: flex; }
+.config-card {
+  background: var(--white);
+  border-radius: 8px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: var(--sh2);
+}
+.config-title { font-family: 'DM Serif Display', serif; font-size: 1.2rem; margin-bottom: 0.35rem; }
+.config-sub { font-size: 0.78rem; color: rgba(15,17,23,0.45); margin-bottom: 1.5rem; line-height: 1.6; }
+.cfg-group { margin-bottom: 1rem; }
+.cfg-group label { display: block; font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(15,17,23,0.45); margin-bottom: 0.3rem; }
+.cfg-group input {
+  width: 100%; border: 1px solid var(--border); border-radius: var(--r);
+  padding: 0.55rem 0.8rem; font-family: 'DM Mono', monospace; font-size: 0.78rem;
+  color: var(--ink); background: var(--paper); transition: border-color 0.15s;
+}
+.cfg-group input:focus { outline: none; border-color: var(--gold); background: var(--white); }
+.cfg-steps {
+  background: var(--cream); border-radius: var(--r); padding: 1rem;
+  font-size: 0.78rem; line-height: 1.8; margin-bottom: 1.25rem;
+  counter-reset: step;
+}
+.cfg-steps p { display: flex; gap: 0.5rem; }
+.cfg-steps p::before {
+  counter-increment: step;
+  content: counter(step) ".";
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--gold);
+  font-weight: 500;
+  min-width: 18px;
+  padding-top: 0.05rem;
+}
+.cfg-steps a { color: var(--blue); }
+.cfg-row { display: flex; gap: 0.75rem; }
+
+/* ══════════════════════════════════════
+   APP SHELL
+══════════════════════════════════════ */
+#app { display: none; flex-direction: column; min-height: 100vh; }
+#app.visible { display: flex; }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--ink2);
+  height: 58px;
+  display: flex;
+  align-items: center;
+  padding: 0 1.75rem;
+  gap: 1.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  border-bottom: 2px solid var(--gold);
+}
+.topbar-logo { font-family: 'DM Serif Display', serif; font-size: 1.2rem; color: var(--paper); flex-shrink: 0; }
+.topbar-logo span { color: var(--gold); }
+.topbar-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.12); }
+.topbar-user {
+  display: flex; align-items: center; gap: 0.55rem; margin-left: auto;
+  cursor: pointer; padding: 0.3rem 0.65rem; border-radius: var(--r);
+  border: 1px solid rgba(255,255,255,0.12); transition: border-color 0.15s;
+}
+.topbar-user:hover { border-color: var(--gold); }
+.user-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--gold); color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace; font-size: 0.7rem; font-weight: 500; flex-shrink: 0;
+}
+.user-name { font-size: 0.78rem; color: rgba(245,242,236,0.85); }
+.user-role-badge {
+  font-family: 'DM Mono', monospace; font-size: 0.6rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  background: rgba(197,168,79,0.2); color: var(--gold2);
+  padding: 0.1rem 0.4rem; border-radius: 2px;
+}
+.topbar-sync {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-family: 'DM Mono', monospace; font-size: 0.65rem;
+  color: rgba(255,255,255,0.4); letter-spacing: 0.06em;
+}
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #4caf50; }
+.sync-dot.syncing { animation: pulse 1s infinite; background: var(--gold); }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+#logoutBtn {
+  font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.08em;
+  text-transform: uppercase; background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--r);
+  padding: 0.3rem 0.65rem; cursor: pointer; transition: all 0.15s;
+}
+#logoutBtn:hover { background: rgba(184,48,48,0.2); color: #e88; border-color: rgba(184,48,48,0.3); }
+
+/* ── TABS ── */
+.tabs {
+  background: var(--ink3);
+  display: flex;
+  padding: 0 1.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(245,242,236,0.38);
+  padding: 0.7rem 1.25rem; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.tab:hover { color: var(--gold2); }
+.tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.tab.hidden { display: none; }
+.tbadge {
+  background: var(--red); color: #fff; border-radius: 8px;
+  font-size: 0.55rem; padding: 0.05rem 0.32rem; line-height: 1.4;
+}
+
+/* ── MAIN CONTENT ── */
+main { flex: 1; padding: 1.75rem 2rem 3rem; max-width: 1400px; width: 100%; margin: 0 auto; }
+.section { display: none; animation: fadeIn 0.22s ease both; }
+.section.active { display: block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+
+/* ── PAGE TITLE ── */
+.page-head { margin-bottom: 1.25rem; }
+.page-title { font-family: 'DM Serif Display', serif; font-size: 1.6rem; color: var(--ink); display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+.page-sub { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: rgba(15,17,23,0.3); letter-spacing: 0.1em; text-transform: uppercase; }
+.divider { height: 1px; background: var(--border); margin: 0.85rem 0 1.4rem; }
+
+/* ── CARDS ── */
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--sh); overflow: hidden; }
+.card-head { background: var(--cream); padding: 0.7rem 1.2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.card-title { font-family: 'DM Serif Display', serif; font-size: 0.92rem; }
+.card-body { padding: 1.1rem 1.2rem; }
+
+/* ── BADGES ── */
+.badge { font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.18rem 0.5rem; border-radius:2px; white-space:nowrap; }
+.badge-red   { background:var(--red2);   color:var(--red);   }
+.badge-green { background:var(--green2); color:var(--green); }
+.badge-gold  { background:var(--warn2);  color:var(--warn);  }
+.badge-blue  { background:var(--blue2);  color:var(--blue);  }
+.badge-gray  { background:var(--cream);  color:rgba(15,17,23,0.45); }
+
+/* ── GRIDS ── */
+.g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin-bottom:1.1rem; }
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; margin-bottom:1.1rem; }
+.g12 { display:grid; grid-template-columns:1fr 2fr; gap:1.1rem; }
+
+/* ── KPI ROW ── */
+.kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-bottom:1.25rem; }
+.kpi { background:var(--white); border:1px solid var(--border); border-radius:var(--r); padding:0.95rem 1.1rem; box-shadow:var(--sh); position:relative; overflow:hidden; }
+.kpi::before { content:''; position:absolute; left:0;top:0;bottom:0; width:3px; }
+.kpi.r::before { background:var(--red); }
+.kpi.g::before { background:var(--green); }
+.kpi.o::before { background:var(--gold); }
+.kpi.b::before { background:var(--blue); }
+.kpi.w::before { background:var(--warn); }
+.kpi-label { font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; color:rgba(15,17,23,0.4); margin-bottom:0.3rem; }
+.kpi-val { font-family:'DM Serif Display',serif; font-size:1.9rem; color:var(--ink); line-height:1; }
+.kpi-sub { font-size:0.7rem; color:rgba(15,17,23,0.45); margin-top:0.2rem; }
+
+/* ── ALERT BAR ── */
+.alert { border-left:3px solid var(--gold); background:var(--warn2); padding:0.6rem 1rem; font-size:0.79rem; border-radius:0 var(--r) var(--r) 0; margin-bottom:0.85rem; display:flex; align-items:center; gap:0.5rem; }
+.alert.red { background:var(--red2); border-left-color:var(--red); }
+.alert.blue { background:var(--blue2); border-left-color:var(--blue); }
+.alert.green { background:var(--green2); border-left-color:var(--green); }
+
+/* ── DEADLINE LIST ── */
+.dl-list { list-style:none; }
+.dl-item { display:grid; grid-template-columns:52px 1fr auto auto; align-items:center; gap:0.85rem; padding:0.6rem 0; border-bottom:1px dashed var(--border); font-size:0.82rem; transition:background 0.12s; }
+.dl-item:last-child { border-bottom:none; }
+.dl-item:hover { background:var(--cream); margin:0 -1.2rem; padding-left:1.2rem; padding-right:1.2rem; }
+.dl-date { font-family:'DM Mono',monospace; text-align:center; line-height:1.1; }
+.dl-date .d { font-size:1.15rem; font-weight:500; display:block; }
+.dl-date .m { font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; color:rgba(15,17,23,0.38); }
+.dl-desc small { display:block; color:rgba(15,17,23,0.42); font-size:0.7rem; margin-top:0.08rem; }
+.dl-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.ph { background:var(--red); } .pm { background:var(--warn); } .pl { background:var(--green); }
+
+/* ── PROGRESS BAR ── */
+.pbar { height:5px; background:var(--cream); border-radius:3px; overflow:hidden; margin-top:0.25rem; }
+.pfill { height:100%; border-radius:3px; transition:width 0.6s ease; }
+
+/* ── CHECKLIST ── */
+.cl { list-style:none; }
+.cl-item { display:flex; align-items:flex-start; gap:0.6rem; padding:0.48rem 0; border-bottom:1px dashed var(--border); font-size:0.81rem; }
+.cl-item:last-child { border-bottom:none; }
+.cl-item input[type=checkbox] { margin-top:0.18rem; accent-color:var(--ink); cursor:pointer; }
+.cl-item label { cursor:pointer; flex:1; line-height:1.45; }
+.cl-item input:checked+label { text-decoration:line-through; color:rgba(15,17,23,0.38); }
+.cl-meta { font-family:'DM Mono',monospace; font-size:0.62rem; color:rgba(15,17,23,0.38); white-space:nowrap; }
+
+/* ── KANBAN ── */
+.kanban { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
+.k-col { background:var(--cream); border-radius:var(--r); padding:0.8rem; }
+.k-head { font-family:'DM Mono',monospace; font-size:0.65rem; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.7rem; display:flex; justify-content:space-between; align-items:center; }
+.k-cnt { background:var(--ink); color:var(--paper); border-radius:2px; padding:0.05rem 0.38rem; font-size:0.62rem; }
+.k-card { background:var(--white); border:1px solid var(--border); border-radius:3px; padding:0.65rem 0.8rem; margin-bottom:0.45rem; font-size:0.78rem; box-shadow:0 1px 4px rgba(15,17,23,0.06); cursor:grab; transition:box-shadow 0.15s; }
+.k-card:hover { box-shadow:0 3px 12px rgba(15,17,23,0.12); }
+.k-card-t { font-weight:600; margin-bottom:0.2rem; }
+.k-card-m { font-size:0.68rem; color:rgba(15,17,23,0.45); display:flex; justify-content:space-between; }
+
+/* ── STAFF CARD ── */
+.sg { display:grid; grid-template-columns:repeat(auto-fill,minmax(235px,1fr)); gap:1rem; margin-bottom:1.1rem; }
+.sc { background:var(--white); border:1px solid var(--border); border-radius:var(--r); padding:1.05rem 1.15rem; box-shadow:var(--sh); transition:box-shadow 0.15s, transform 0.15s; }
+.sc:hover { box-shadow:var(--sh2); transform:translateY(-2px); }
+.sc-name { font-family:'DM Serif Display',serif; font-size:0.98rem; margin-bottom:0.15rem; }
+.sc-role { font-family:'DM Mono',monospace; font-size:0.63rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold); margin-bottom:0.7rem; }
+.mr { display:flex; align-items:center; gap:0.55rem; font-size:0.73rem; margin-bottom:0.38rem; }
+.ml { width:78px; color:rgba(15,17,23,0.45); flex-shrink:0; }
+.mb { flex:1; height:4px; background:var(--cream); border-radius:2px; overflow:hidden; }
+.mf { height:100%; border-radius:2px; transition:width 0.5s; }
+.mv { width:26px; text-align:right; font-family:'DM Mono',monospace; font-size:0.65rem; }
+.st { margin-top:0.7rem; display:flex; gap:0.4rem; flex-wrap:wrap; }
+.tag { padding:0.12rem 0.4rem; border-radius:2px; font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.06em; }
+
+/* ── SCAD TABLE ── */
+.st-wrap { margin-bottom:1.75rem; }
+.st-mhead { font-family:'DM Serif Display',serif; font-size:1.05rem; padding:0.45rem 0; border-bottom:2px solid var(--ink); margin-bottom:0.8rem; display:flex; align-items:center; gap:0.65rem; }
+.st-cnt { font-family:'DM Mono',monospace; font-size:0.62rem; background:var(--ink); color:var(--paper); padding:0.12rem 0.42rem; border-radius:2px; }
+.st-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+.st-table thead tr { background:var(--cream); }
+.st-table th { padding:0.48rem 0.75rem; text-align:left; font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:rgba(15,17,23,0.42); font-weight:400; border-bottom:1px solid var(--border); }
+.st-table td { padding:0.52rem 0.75rem; border-bottom:1px dashed var(--border); vertical-align:middle; }
+.st-table tr:last-child td { border-bottom:none; }
+.st-table tr:hover td { background:var(--cream); }
+.sd { font-family:'DM Mono',monospace; font-size:0.73rem; font-weight:500; white-space:nowrap; }
+
+/* ── CLIENT TABLE ── */
+.ct { width:100%; border-collapse:collapse; font-size:0.8rem; }
+.ct thead tr { background:var(--ink); color:var(--paper); }
+.ct th { padding:0.6rem 0.85rem; text-align:left; font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; font-weight:400; }
+.ct td { padding:0.55rem 0.85rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+.ct tbody tr:hover { background:var(--cream); }
+
+/* ── OUTLOOK PANELS ── */
+.o-head-blue { background:#0078d4; }
+.o-head-red  { background:var(--red); }
+.o-panel-head { padding:0.7rem 1.2rem; color:#fff; display:flex; align-items:center; justify-content:space-between; }
+.o-panel-title { font-family:'DM Serif Display',serif; font-size:0.92rem; }
+.o-loading { padding:1.75rem; text-align:center; color:rgba(15,17,23,0.38); font-family:'DM Mono',monospace; font-size:0.72rem; }
+.spinner { display:inline-block; width:16px; height:16px; border:2px solid var(--cream); border-top-color:var(--blue); border-radius:50%; animation:spin 0.7s linear infinite; margin-bottom:0.4rem; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.e-item { display:flex; gap:0.75rem; padding:0.65rem 1.2rem; border-bottom:1px solid var(--border); align-items:flex-start; cursor:pointer; transition:background 0.12s; }
+.e-item:hover { background:var(--cream); }
+.e-item:last-child { border-bottom:none; }
+.e-unread { border-left:3px solid var(--blue); }
+.e-dot { width:7px; height:7px; border-radius:50%; background:var(--blue); flex-shrink:0; margin-top:0.35rem; }
+.e-dot.r { background:transparent; border:1px solid var(--border); }
+.e-from { font-size:0.76rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px; }
+.e-subj { font-size:0.78rem; margin-bottom:0.12rem; }
+.e-addr { font-size:0.68rem; color:rgba(15,17,23,0.42); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.e-time { font-family:'DM Mono',monospace; font-size:0.62rem; color:rgba(15,17,23,0.38); white-space:nowrap; flex-shrink:0; }
+.e-meta { flex:1; min-width:0; }
+.e-err { padding:1.25rem 1.2rem; font-size:0.8rem; color:var(--red); }
+.e-empty { padding:1.25rem 1.2rem; font-size:0.8rem; color:rgba(15,17,23,0.38); text-align:center; font-style:italic; }
+.c-item { display:flex; gap:0.75rem; padding:0.6rem 1.2rem; border-bottom:1px solid var(--border); align-items:flex-start; }
+.c-item:last-child { border-bottom:none; }
+.c-item:hover { background:var(--cream); }
+.c-time { font-family:'DM Mono',monospace; font-size:0.68rem; color:rgba(15,17,23,0.42); white-space:nowrap; min-width:48px; padding-top:0.2rem; }
+.c-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; margin-top:0.25rem; }
+.c-title { font-size:0.8rem; font-weight:600; margin-bottom:0.12rem; }
+.c-sub { font-size:0.69rem; color:rgba(15,17,23,0.42); }
+
+/* ── ROLE NOTICE ── */
+.role-notice { background:var(--blue2); border-left:3px solid var(--blue); padding:0.6rem 1rem; font-size:0.78rem; border-radius:0 var(--r) var(--r) 0; margin-bottom:1rem; }
+
+/* ── FORM ── */
+.fr { display:grid; grid-template-columns:1fr 1fr; gap:0.9rem; margin-bottom:0.9rem; }
+.fg { display:flex; flex-direction:column; gap:0.28rem; }
+.fg label { font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; color:rgba(15,17,23,0.42); }
+.fg input,.fg select,.fg textarea { border:1px solid var(--border); border-radius:var(--r); padding:0.48rem 0.65rem; font-family:'DM Sans',sans-serif; font-size:0.8rem; color:var(--ink); background:var(--paper); transition:border-color 0.15s; }
+.fg input:focus,.fg select:focus { outline:none; border-color:var(--gold); background:var(--white); }
+.btn { font-family:'DM Mono',monospace; font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; padding:0.5rem 1.1rem; border:none; border-radius:var(--r); cursor:pointer; transition:all 0.15s; }
+.btn-p { background:var(--ink); color:var(--paper); }
+.btn-p:hover { background:var(--ink2); }
+.btn-g { background:var(--gold); color:var(--ink); }
+.btn-ghost { background:transparent; color:var(--ink); border:1px solid var(--border); }
+.btn-ghost:hover { background:var(--cream); }
+.btn-sm { padding:0.28rem 0.6rem; font-size:0.6rem; }
+.btn-ref { background:rgba(255,255,255,0.18); color:#fff; border:none; cursor:pointer; border-radius:var(--r); padding:0.25rem 0.55rem; font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.08em; }
+
+/* ── USER DROPDOWN ── */
+.user-dropdown { display:none; position:absolute; top:58px; right:1.75rem; background:var(--white); border:1px solid var(--border); border-radius:var(--r); box-shadow:var(--sh2); min-width:220px; z-index:300; padding:0.5rem 0; }
+.user-dropdown.open { display:block; animation:fadeIn 0.15s ease; }
+.dd-item { padding:0.55rem 1rem; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:0.6rem; transition:background 0.1s; }
+.dd-item:hover { background:var(--cream); }
+.dd-item.red:hover { background:var(--red2); color:var(--red); }
+.dd-sep { height:1px; background:var(--border); margin:0.35rem 0; }
+.dd-label { padding:0.35rem 1rem; font-family:'DM Mono',monospace; font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:rgba(15,17,23,0.35); }
+
+@media(max-width:900px){.g3,.kpi-row{grid-template-columns:1fr 1fr}.kanban,.g12{grid-template-columns:1fr}}
+@media(max-width:600px){main{padding:1rem 0.85rem 2rem}.g2,.g3,.kpi-row,.kanban{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     CONFIG MODAL (first-time setup)
+══════════════════════════════════════ -->
+<div id="configModal">
+  <div class="config-card">
+    <div class="config-title">⚙️ Configurazione Azure</div>
+    <div class="config-sub">Per abilitare il login Microsoft, inserisci i dati della tua app registrata in Azure AD. Operazione da fare una sola volta.</div>
+
+    <div class="cfg-steps">
+      <p>Vai su <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank">portal.azure.com → App Registrations</a></p>
+      <p>Clicca <strong>New registration</strong> → Nome: "Studio Manager" → Account: <em>Accounts in this organizational directory only</em></p>
+      <p>In <strong>Redirect URI</strong> scegli <em>Single-page application (SPA)</em> e incolla l'URL di questa pagina</p>
+      <p>Copia l'<strong>Application (client) ID</strong> e il <strong>Directory (tenant) ID</strong> qui sotto</p>
+      <p>In <strong>API permissions</strong>: aggiungi <em>Mail.Read, Calendars.Read, Files.ReadWrite, Sites.ReadWrite.All</em> e fai "Grant admin consent"</p>
+    </div>
+
+    <div class="cfg-group"><label>Application (Client) ID</label><input type="text" id="cfgClientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+    <div class="cfg-group"><label>Directory (Tenant) ID</label><input type="text" id="cfgTenantId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+
+    <div class="cfg-row">
+      <button class="btn btn-p" style="flex:1" onclick="saveConfig()">Salva e continua</button>
+      <button class="btn btn-ghost" onclick="useDemoMode()">Demo (senza Azure)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">Studio<span>.</span>Manager</div>
+    <div class="login-year">Anno Fiscale 2026</div>
+
+    <div class="login-sub">Accedi con il tuo account Microsoft aziendale per sincronizzare email, calendario e dati studio su OneDrive.</div>
+
+    <button class="btn-ms" onclick="signIn()">
+      <svg width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Accedi con Microsoft 365
+    </button>
+
+    <div id="loginError"></div>
+
+    <div class="login-config-notice">
+      Prima volta? <a href="#" onclick="openConfig()">Configura Azure AD</a> &nbsp;·&nbsp; <a href="#" onclick="useDemoMode()">Modalità demo</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     APP
+══════════════════════════════════════ -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar" style="position:relative">
+    <div class="topbar-logo">Studio<span>.</span>Manager <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--gold);margin-left:0.35rem">2026</span></div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-sync"><div class="sync-dot" id="syncDot"></div><span id="syncLabel">Sincronizzato</span></div>
+    <div class="topbar-user" onclick="toggleDropdown()">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <div><div class="user-name" id="userName">Caricamento...</div></div>
+      <div class="user-role-badge" id="userRoleBadge">—</div>
+    </div>
+    <button id="logoutBtn" onclick="signOut()">Esci</button>
+
+    <div class="user-dropdown" id="userDropdown">
+      <div class="dd-label">Account</div>
+      <div class="dd-item" id="ddName" style="font-weight:600;pointer-events:none"></div>
+      <div class="dd-item" id="ddEmail" style="font-size:0.72rem;color:rgba(15,17,23,0.45);pointer-events:none"></div>
+      <div class="dd-sep"></div>
+      <div class="dd-item" onclick="show('personale')">👤 Il mio profilo</div>
+      <div class="dd-item" onclick="openConfig()">⚙️ Configura Azure</div>
+      <div class="dd-sep"></div>
+      <div class="dd-item red" onclick="signOut()">↩ Disconnetti</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <nav class="tabs" id="tabNav">
+    <div class="tab active"  data-tab="dashboard"  onclick="show('dashboard',this)">Dashboard</div>
+    <div class="tab"         data-tab="outlook"     onclick="show('outlook',this)">Outlook <span class="tbadge" id="tbEmail" style="display:none">0</span></div>
+    <div class="tab"         data-tab="scadenze"    onclick="show('scadenze',this)">Scadenze 2026</div>
+    <div class="tab"         data-tab="pratiche"    onclick="show('pratiche',this)">Pratiche</div>
+    <div class="tab"         data-tab="personale"   onclick="show('personale',this)">Personale</div>
+    <div class="tab"         data-tab="clienti"     onclick="show('clienti',this)">Clienti</div>
+    <div class="tab"         data-tab="procedure"   onclick="show('procedure',this)">Procedure</div>
+  </nav>
+
+  <main>
+
+  <!-- ════ DASHBOARD ════ -->
+  <div class="section active" id="sec-dashboard">
+    <div class="page-head"><div class="page-title">Dashboard <span class="page-sub">— Studio · Maggio 2026</span></div></div>
+    <div class="divider"></div>
+
+    <div class="alert red" id="alertScad">⚠ <strong>Scadenza 31 maggio:</strong> F24 IVA mensile — verificare copertura</div>
+    <div class="alert blue" id="alertOutlook">📧 Connessione Outlook in corso...</div>
+
+    <div class="kpi-row">
+      <div class="kpi r"><div class="kpi-label">Scad. Critiche</div><div class="kpi-val">2</div><div class="kpi-sub">entro 7 gg</div></div>
+      <div class="kpi o"><div class="kpi-label">Pratiche Aperte</div><div class="kpi-val">47</div><div class="kpi-sub">12 in scadenza</div></div>
+      <div class="kpi b"><div class="kpi-label">Clienti Attivi</div><div class="kpi-val">84</div><div class="kpi-sub">anno fiscale 2026</div></div>
+      <div class="kpi g"><div class="kpi-label">Carico Medio</div><div class="kpi-val">72<small style="font-size:.95rem">%</small></div><div class="kpi-sub">team 4 persone</div></div>
+      <div class="kpi w"><div class="kpi-label">Email Senza Risp.</div><div class="kpi-val" id="kpiEmail">—</div><div class="kpi-sub" id="kpiSub">connessione...</div></div>
+    </div>
+
+    <div class="g3">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Scadenze Imminenti</span><span class="badge badge-red">Giugno 2026</span></div>
+        <div class="card-body">
+          <ul class="dl-list">
+            <li class="dl-item"><div class="dl-date"><span class="d">31</span><span class="m">Mag</span></div><div class="dl-desc">F24 — IVA mensile<small>contribuenti mensili</small></div><div class="dl-dot ph"></div><span class="badge badge-red">4 gg</span></li>
+            <li class="dl-item"><div class="dl-date"><span class="d">10</span><span class="m">Giu</span></div><div class="dl-desc">UniEmens — maggio<small>INPS contributi</small></div><div class="dl-dot ph"></div><span class="badge badge-gold">14 gg</span></li>
+            <li class="dl-item"><div class="dl-date"><span class="d">16</span><span class="m">Giu</span></div><div class="dl-desc">F24 — Acconti IRPEF 1ª rata<small>P.IVA + ritenute maggio</small></div><div class="dl-dot pm"></div><span class="badge badge-gold">20 gg</span></li>
+            <li class="dl-item"><div class="dl-date"><span class="d">30</span><span class="m">Giu</span></div><div class="dl-desc">730 — Termine invio<small>31 dichiarazioni in lavorazione</small></div><div class="dl-dot pm"></div><span class="badge badge-gold">34 gg</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">📅 Prossimi Appuntamenti</span><span class="badge badge-blue" id="calBadge">—</span></div>
+        <div class="card-body" style="padding:0" id="dashCal"><div class="o-loading"><div class="spinner" style="display:block;margin:0 auto .4rem"></div>Caricamento calendario...</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">📧 Email Senza Risposta</span><span class="badge badge-red" id="emailBadgeDash">—</span></div>
+        <div class="card-body" style="padding:0" id="dashEmail"><div class="o-loading"><div class="spinner" style="display:block;margin:0 auto .4rem"></div>Caricamento email...</div></div>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Note Operative</span><span class="badge badge-blue">Oggi</span></div>
+        <div class="card-body">
+          <ul class="cl">
+            <li class="cl-item"><input type="checkbox" id="n1"><label for="n1">Verificare F24 IVA maggio — file da ricevere da 3 clienti</label><span class="cl-meta">→ M. Rossi</span></li>
+            <li class="cl-item"><input type="checkbox" id="n2"><label for="n2">Promemoria documenti 730 — 5 clienti non hanno ancora risposto</label><span class="cl-meta">→ A. Neri</span></li>
+            <li class="cl-item"><input type="checkbox" id="n3"><label for="n3">Contabilizzare fatture maggio — 3 clienti ordinari</label><span class="cl-meta">→ F. Verdi</span></li>
+            <li class="cl-item"><input type="checkbox" id="n4"><label for="n4">Riunione interna h.17:00 — pianificazione carichi giugno</label><span class="cl-meta">→ Tutti</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Carico Personale</span></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:.9rem">
+            <div><div style="display:flex;justify-content:space-between;font-size:.79rem;margin-bottom:.25rem"><span><strong>M. Rossi</strong> — Senior</span><span style="font-family:'DM Mono',monospace;font-size:.7rem;color:var(--red)">88%</span></div><div class="pbar"><div class="pfill" style="width:88%;background:var(--red)"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;font-size:.79rem;margin-bottom:.25rem"><span><strong>L. Bianchi</strong> — Praticante</span><span style="font-family:'DM Mono',monospace;font-size:.7rem">65%</span></div><div class="pbar"><div class="pfill" style="width:65%;background:var(--gold)"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;font-size:.79rem;margin-bottom:.25rem"><span><strong>F. Verdi</strong> — Contabile</span><span style="font-family:'DM Mono',monospace;font-size:.7rem">71%</span></div><div class="pbar"><div class="pfill" style="width:71%;background:var(--gold)"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;font-size:.79rem;margin-bottom:.25rem"><span><strong>A. Neri</strong> — Segreteria</span><span style="font-family:'DM Mono',monospace;font-size:.7rem">58%</span></div><div class="pbar"><div class="pfill" style="width:58%;background:var(--green)"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ OUTLOOK ════ -->
+  <div class="section" id="sec-outlook">
+    <div class="page-head"><div class="page-title">Outlook <span class="page-sub">— Email & Calendario Live</span></div></div>
+    <div class="divider"></div>
+    <div class="g12">
+      <div>
+        <div class="card" style="overflow:hidden">
+          <div class="o-panel-head o-head-blue"><span class="o-panel-title">📅 Calendario — 14 gg</span><button class="btn-ref" onclick="loadCalendar()">↺ Aggiorna</button></div>
+          <div id="calPanel"><div class="o-loading"><div class="spinner" style="display:block;margin:0 auto .4rem"></div>Caricamento...</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="overflow:hidden">
+          <div class="o-panel-head o-head-red"><span class="o-panel-title">📧 Email Senza Risposta</span><div style="display:flex;align-items:center;gap:.5rem"><span id="emailCntLabel" style="font-family:'DM Mono',monospace;font-size:.68rem;background:rgba(255,255,255,.2);padding:.12rem .45rem;border-radius:2px"></span><button class="btn-ref" onclick="loadEmails()">↺ Aggiorna</button></div></div>
+          <div id="emailPanel"><div class="o-loading"><div class="spinner" style="display:block;margin:0 auto .4rem"></div>Caricamento...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SCADENZE 2026 ════ -->
+  <div class="section" id="sec-scadenze">
+    <div class="page-head"><div class="page-title">Scadenziario 2026 <span class="page-sub">— Fiscale & Contributivo</span></div></div>
+    <div class="divider"></div>
+    <div class="alert">📌 Date aggiornate al calendario fiscale 2026 con proroghe per festività e weekend.</div>
+
+    <div class="st-wrap">
+      <div class="st-mhead">Giugno 2026 <span class="st-cnt">7</span></div>
+      <table class="st-table"><thead><tr><th>Data</th><th>Adempimento</th><th>Soggetti</th><th>Tipo</th><th>Resp.</th><th>Stato</th></tr></thead><tbody>
+        <tr><td class="sd">10/06</td><td>UniEmens — maggio 2026</td><td>Datori di lavoro</td><td><span class="tag" style="background:var(--warn2);color:var(--warn)">INPS</span></td><td>F. Verdi</td><td><span class="badge badge-gold">Da fare</span></td></tr>
+        <tr><td class="sd">15/06</td><td>TARI — 1ª rata (comuni con scadenza standard)</td><td>Imprese / P.F.</td><td><span class="tag" style="background:var(--green2);color:var(--green)">Comune</span></td><td>A. Neri</td><td><span class="badge badge-gray">Verifica</span></td></tr>
+        <tr><td class="sd">16/06</td><td>F24 — Saldo IRPEF 2025 + 1ª rata acconto 2026</td><td>Persone fisiche con P.IVA</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>M. Rossi</td><td><span class="badge badge-gold">Da fare</span></td></tr>
+        <tr><td class="sd">16/06</td><td>F24 — Ritenute maggio + INPS artigiani/commercianti</td><td>Sostituti d'imposta</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>F. Verdi</td><td><span class="badge badge-gold">Da fare</span></td></tr>
+        <tr><td class="sd">16/06</td><td>IMU 2026 — 1ª rata acconto</td><td>Possessori immobili</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">IMU</span></td><td>M. Rossi</td><td><span class="badge badge-gold">Da fare</span></td></tr>
+        <tr><td class="sd">30/06</td><td>Modello 730 — termine invio telematico</td><td>Dipendenti / pensionati</td><td><span class="tag" style="background:var(--red2);color:var(--red)">730</span></td><td>Rossi + Bianchi</td><td><span class="badge badge-gold">In corso</span></td></tr>
+        <tr><td class="sd">30/06</td><td>Modello 770 semplificato — invio telematico</td><td>Sostituti d'imposta</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">770</span></td><td>F. Verdi</td><td><span class="badge badge-gray">Verifica</span></td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="st-wrap">
+      <div class="st-mhead">Luglio 2026 <span class="st-cnt">5</span></div>
+      <table class="st-table"><thead><tr><th>Data</th><th>Adempimento</th><th>Tipo</th><th>Resp.</th></tr></thead><tbody>
+        <tr><td class="sd">10/07</td><td>UniEmens — giugno 2026</td><td><span class="tag" style="background:var(--warn2);color:var(--warn)">INPS</span></td><td>F. Verdi</td></tr>
+        <tr><td class="sd">16/07</td><td>F24 — Ritenute giugno + INPS artigiani/commercianti</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>F. Verdi</td></tr>
+        <tr><td class="sd">16/07</td><td>F24 — IVA giugno mensili / IVA II trimestre trimestrali (+0,33%)</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>M. Rossi</td></tr>
+        <tr><td class="sd">31/07</td><td>LIPE — Liquidazioni IVA II trimestre 2026</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">LIPE</span></td><td>M. Rossi</td></tr>
+        <tr><td class="sd">31/07</td><td>Dichiarazione IMU — enti non commerciali / casi speciali</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">IMU</span></td><td>Titolare</td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="st-wrap">
+      <div class="st-mhead">Agosto 2026 <span class="st-cnt">4</span></div>
+      <table class="st-table"><thead><tr><th>Data</th><th>Adempimento</th><th>Tipo</th><th>Resp.</th></tr></thead><tbody>
+        <tr><td class="sd">20/08</td><td>F24 — Ritenute luglio + INPS (proroga Ferragosto al 20/08)</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>F. Verdi</td></tr>
+        <tr><td class="sd">20/08</td><td>F24 — IVA luglio con maggiorazione 0,40% (mensili)</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>M. Rossi</td></tr>
+        <tr><td class="sd">20/08</td><td>UniEmens luglio 2026 (proroga Ferragosto)</td><td><span class="tag" style="background:var(--warn2);color:var(--warn)">INPS</span></td><td>F. Verdi</td></tr>
+        <tr><td class="sd">31/08</td><td>Modello Redditi PF 2026 (redditi 2025) — termine invio (salvo proroga)</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">Redditi</span></td><td>M. Rossi</td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="st-wrap">
+      <div class="st-mhead">Settembre 2026 <span class="st-cnt">4</span></div>
+      <table class="st-table"><thead><tr><th>Data</th><th>Adempimento</th><th>Tipo</th><th>Resp.</th></tr></thead><tbody>
+        <tr><td class="sd">10/09</td><td>UniEmens — agosto 2026</td><td><span class="tag" style="background:var(--warn2);color:var(--warn)">INPS</span></td><td>F. Verdi</td></tr>
+        <tr><td class="sd">16/09</td><td>F24 — Ritenute agosto + acconti INPS artigiani/commercianti</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>F. Verdi</td></tr>
+        <tr><td class="sd">16/09</td><td>F24 — IVA agosto (mensili) o 2ª rata saldo II trimestre con magg.</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>M. Rossi</td></tr>
+        <tr><td class="sd">30/09</td><td>Modello Redditi SC / SP — bilanci con esercizio chiuso al 31/12/2025</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">Redditi SC</span></td><td>Titolare</td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="st-wrap">
+      <div class="st-mhead">Ottobre – Novembre 2026 <span class="st-cnt">6</span></div>
+      <table class="st-table"><thead><tr><th>Data</th><th>Adempimento</th><th>Tipo</th><th>Resp.</th></tr></thead><tbody>
+        <tr><td class="sd">16/10</td><td>F24 — Ritenute settembre + INPS</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>F. Verdi</td></tr>
+        <tr><td class="sd">31/10</td><td>LIPE — Liquidazioni IVA III trimestre 2026</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">LIPE</span></td><td>M. Rossi</td></tr>
+        <tr><td class="sd">16/11</td><td>F24 — Acconti IRPEF / IRES / IRAP 2ª rata (o unica novembre)</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>M. Rossi</td></tr>
+        <tr><td class="sd">16/11</td><td>IMU 2026 — 2ª rata saldo</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">IMU</span></td><td>M. Rossi</td></tr>
+        <tr><td class="sd">30/11</td><td>Modello 730 integrativo — termine invio telematico</td><td><span class="tag" style="background:var(--red2);color:var(--red)">730</span></td><td>M. Rossi</td></tr>
+        <tr><td class="sd">30/11</td><td>CU 2026 — trasmissione tardiva (entro 60 gg riduzione sanzione)</td><td><span class="tag" style="background:var(--warn2);color:var(--warn)">CU</span></td><td>F. Verdi</td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="st-wrap">
+      <div class="st-mhead">Dicembre 2026 <span class="st-cnt">3</span></div>
+      <table class="st-table"><thead><tr><th>Data</th><th>Adempimento</th><th>Tipo</th><th>Resp.</th></tr></thead><tbody>
+        <tr><td class="sd">10/12</td><td>UniEmens — novembre 2026</td><td><span class="tag" style="background:var(--warn2);color:var(--warn)">INPS</span></td><td>F. Verdi</td></tr>
+        <tr><td class="sd">16/12</td><td>F24 — Ritenute novembre + INPS artigiani/commercianti</td><td><span class="tag" style="background:var(--red2);color:var(--red)">F24</span></td><td>F. Verdi</td></tr>
+        <tr><td class="sd">27/12</td><td>LIPE — IV trimestre 2026 (o entro 28/02/2027)</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">LIPE</span></td><td>M. Rossi</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+
+  <!-- ════ PRATICHE ════ -->
+  <div class="section" id="sec-pratiche">
+    <div class="page-head"><div class="page-title">Pratiche <span class="page-sub">— Kanban Lavorazioni</span></div></div>
+    <div class="divider"></div>
+    <div class="kanban">
+      <div class="k-col"><div class="k-head">Da Avviare <span class="k-cnt">8</span></div>
+        <div class="k-card"><div class="k-card-t">730 — Sig.ra Colombo M.</div><div class="k-card-m"><span class="tag" style="background:var(--red2);color:var(--red)">730</span><span>Scad. 30/06</span></div></div>
+        <div class="k-card"><div class="k-card-t">Dichiarazione IVA — Beta Srl</div><div class="k-card-m"><span class="tag" style="background:var(--blue2);color:var(--blue)">IVA</span><span>Scad. 30/06</span></div></div>
+        <div class="k-card"><div class="k-card-t">Bilancio 2025 — Gamma Snc</div><div class="k-card-m"><span class="tag" style="background:var(--warn2);color:var(--warn)">Bilancio</span><span>Scad. 30/09</span></div></div>
+        <div class="k-card"><div class="k-card-t">Apertura P.IVA — Sig. Ricci</div><div class="k-card-m"><span class="tag" style="background:var(--green2);color:var(--green)">Startup</span><span>Urgente</span></div></div>
+      </div>
+      <div class="k-col"><div class="k-head">In Lavorazione <span class="k-cnt">21</span></div>
+        <div class="k-card"><div class="k-card-t">730 — Sig. Ferri Paolo</div><div class="k-card-m"><span class="tag" style="background:var(--red2);color:var(--red)">730</span><span>M. Rossi</span></div></div>
+        <div class="k-card"><div class="k-card-t">Contabilità Mag — Delta Spa</div><div class="k-card-m"><span class="tag" style="background:var(--blue2);color:var(--blue)">Contab.</span><span>F. Verdi</span></div></div>
+        <div class="k-card"><div class="k-card-t">Buste paga maggio 2026</div><div class="k-card-m"><span class="tag" style="background:var(--warn2);color:var(--warn)">Paghe</span><span>Scad. 16/06</span></div></div>
+      </div>
+      <div class="k-col"><div class="k-head">Att. Cliente <span class="k-cnt">11</span></div>
+        <div class="k-card"><div class="k-card-t">730 — Sig. Lombardi G.</div><div class="k-card-m"><span class="tag" style="background:var(--red2);color:var(--red)">730</span><span>Doc. CU</span></div></div>
+        <div class="k-card"><div class="k-card-t">Bilancio — Alpha Srl</div><div class="k-card-m"><span class="tag" style="background:var(--warn2);color:var(--warn)">Bilancio</span><span>Firma CDA</span></div></div>
+      </div>
+      <div class="k-col"><div class="k-head">Completate <span class="k-cnt">7</span></div>
+        <div class="k-card" style="opacity:.6"><div class="k-card-t">F24 IVA Aprile — 14 clienti</div><div class="k-card-m"><span class="tag" style="background:var(--green2);color:var(--green)">✓</span><span>30/04/26</span></div></div>
+        <div class="k-card" style="opacity:.6"><div class="k-card-t">CU 2026 — invio telematico</div><div class="k-card-m"><span class="tag" style="background:var(--green2);color:var(--green)">✓</span><span>17/03/26</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PERSONALE ════ -->
+  <div class="section" id="sec-personale">
+    <div class="page-head"><div class="page-title">Personale <span class="page-sub">— Carichi & Presenze</span></div></div>
+    <div class="divider"></div>
+    <div id="roleNotice" class="role-notice" style="display:none"></div>
+    <div class="sg">
+      <div class="sc"><div class="sc-name">Marco Rossi</div><div class="sc-role">Contabile Senior · 6 anni</div><div><div class="mr"><span class="ml">Carico</span><div class="mb"><div class="mf" style="width:88%;background:var(--red)"></div></div><span class="mv" style="color:var(--red)">88%</span></div><div class="mr"><span class="ml">730 ass.</span><div class="mb"><div class="mf" style="width:70%;background:var(--gold)"></div></div><span class="mv">14</span></div><div class="mr"><span class="ml">Ferie res.</span><div class="mb"><div class="mf" style="width:60%;background:var(--green)"></div></div><span class="mv">12gg</span></div></div><div class="st"><span class="tag" style="background:var(--red2);color:var(--red)">Sovraccarico</span><span class="tag" style="background:var(--green2);color:var(--green)">Presente</span></div></div>
+      <div class="sc"><div class="sc-name">Laura Bianchi</div><div class="sc-role">Praticante · 3° anno</div><div><div class="mr"><span class="ml">Carico</span><div class="mb"><div class="mf" style="width:65%;background:var(--gold)"></div></div><span class="mv">65%</span></div><div class="mr"><span class="ml">730 ass.</span><div class="mb"><div class="mf" style="width:55%;background:var(--gold)"></div></div><span class="mv">11</span></div><div class="mr"><span class="ml">Ferie res.</span><div class="mb"><div class="mf" style="width:80%;background:var(--green)"></div></div><span class="mv">16gg</span></div></div><div class="st"><span class="tag" style="background:var(--warn2);color:var(--warn)">Stage ODCEC</span><span class="tag" style="background:var(--green2);color:var(--green)">Presente</span></div></div>
+      <div class="sc"><div class="sc-name">Francesco Verdi</div><div class="sc-role">Contabile · 4 anni</div><div><div class="mr"><span class="ml">Carico</span><div class="mb"><div class="mf" style="width:71%;background:var(--gold)"></div></div><span class="mv">71%</span></div><div class="mr"><span class="ml">Clienti</span><div class="mb"><div class="mf" style="width:75%;background:var(--green)"></div></div><span class="mv">15</span></div><div class="mr"><span class="ml">Ferie res.</span><div class="mb"><div class="mf" style="width:70%;background:var(--green)"></div></div><span class="mv">14gg</span></div></div><div class="st"><span class="tag" style="background:var(--blue2);color:var(--blue)">Paghe</span><span class="tag" style="background:var(--green2);color:var(--green)">Presente</span></div></div>
+      <div class="sc"><div class="sc-name">Anna Neri</div><div class="sc-role">Segreteria · 5 anni</div><div><div class="mr"><span class="ml">Carico</span><div class="mb"><div class="mf" style="width:58%;background:var(--green)"></div></div><span class="mv">58%</span></div><div class="mr"><span class="ml">Pratiche</span><div class="mb"><div class="mf" style="width:50%;background:var(--green)"></div></div><span class="mv">10</span></div><div class="mr"><span class="ml">Ferie res.</span><div class="mb"><div class="mf" style="width:45%;background:var(--gold)"></div></div><span class="mv">9gg</span></div></div><div class="st"><span class="tag" style="background:var(--warn2);color:var(--warn)">Part-time 6h</span><span class="tag" style="background:var(--green2);color:var(--green)">Presente</span></div></div>
+    </div>
+  </div>
+
+  <!-- ════ CLIENTI ════ -->
+  <div class="section" id="sec-clienti">
+    <div class="page-head"><div class="page-title">Clienti <span class="page-sub">— Anagrafica & Stato</span></div></div>
+    <div class="divider"></div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">Portafoglio Clienti Attivi</span><button class="btn btn-p btn-sm">+ Nuovo</button></div>
+      <div class="card-body" style="padding:0">
+        <table class="ct">
+          <thead><tr><th>Cliente</th><th>P.IVA / C.F.</th><th>Tipo</th><th>Resp.</th><th>Servizi</th><th>Pross. Scad.</th><th>Stato</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Alpha Distribuzione Srl</strong></td><td class="mono">02345678901</td><td>Srl</td><td>M. Rossi</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">Cont.</span> <span class="tag" style="background:var(--red2);color:var(--red)">Bilan.</span></td><td class="mono">30/06</td><td><span class="badge badge-gold">In corso</span></td></tr>
+            <tr><td><strong>Beta Servizi Srl</strong></td><td class="mono">03456789012</td><td>Srl</td><td>F. Verdi</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">IVA</span></td><td class="mono">30/06</td><td><span class="badge badge-green">Regolare</span></td></tr>
+            <tr><td><strong>Ferri Paolo</strong></td><td class="mono">FRRPLA70A01H501Z</td><td>P.F.</td><td>M. Rossi</td><td><span class="tag" style="background:var(--red2);color:var(--red)">730</span></td><td class="mono">30/06</td><td><span class="badge badge-gold">In corso</span></td></tr>
+            <tr><td><strong>Gamma Costruzioni Snc</strong></td><td class="mono">04567890123</td><td>Snc</td><td>F. Verdi</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">Cont.</span> <span class="tag" style="background:var(--warn2);color:var(--warn)">Paghe</span></td><td class="mono">10/06</td><td><span class="badge badge-red">Urgente</span></td></tr>
+            <tr><td><strong>Delta Trade Spa</strong></td><td class="mono">05678901234</td><td>Spa</td><td>M. Rossi</td><td><span class="tag" style="background:var(--blue2);color:var(--blue)">Cont.</span> <span class="tag" style="background:var(--red2);color:var(--red)">Bilan.</span> <span class="tag" style="background:var(--warn2);color:var(--warn)">Paghe</span></td><td class="mono">16/06</td><td><span class="badge badge-gold">In corso</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PROCEDURE ════ -->
+  <div class="section" id="sec-procedure">
+    <div class="page-head"><div class="page-title">Procedure <span class="page-sub">— Manuale Operativo</span></div></div>
+    <div class="divider"></div>
+    <div class="g2">
+      <div class="card"><div class="card-head"><span class="card-title">Flusso Dichiarazioni 730</span><span class="badge badge-blue">Checklist</span></div><div class="card-body"><ul class="cl"><li class="cl-item"><input type="checkbox" id="p1"><label for="p1"><strong>1.</strong> Raccolta documenti (CU, spese, interessi mutuo, detrazioni)</label></li><li class="cl-item"><input type="checkbox" id="p2"><label for="p2"><strong>2.</strong> Verifica 730 precompilato Agenzia Entrate</label></li><li class="cl-item"><input type="checkbox" id="p3"><label for="p3"><strong>3.</strong> Integrazione dati e controllo anomalie</label></li><li class="cl-item"><input type="checkbox" id="p4"><label for="p4"><strong>4.</strong> Prospetto riepilogativo al cliente per firma</label></li><li class="cl-item"><input type="checkbox" id="p5"><label for="p5"><strong>5.</strong> Invio telematico tramite Entratel</label></li><li class="cl-item"><input type="checkbox" id="p6"><label for="p6"><strong>6.</strong> Conservazione ricevuta — aggiornamento registro</label></li></ul></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">Flusso Contabilità Mensile</span><span class="badge badge-blue">Checklist</span></div><div class="card-body"><ul class="cl"><li class="cl-item"><input type="checkbox" id="q1"><label for="q1"><strong>1.</strong> Raccolta fatture attive e passive dal cliente</label></li><li class="cl-item"><input type="checkbox" id="q2"><label for="q2"><strong>2.</strong> Registrazione in PROFIS Web</label></li><li class="cl-item"><input type="checkbox" id="q3"><label for="q3"><strong>3.</strong> Riconciliazione estratto conto bancario</label></li><li class="cl-item"><input type="checkbox" id="q4"><label for="q4"><strong>4.</strong> Liquidazione IVA + predisposizione F24</label></li><li class="cl-item"><input type="checkbox" id="q5"><label for="q5"><strong>5.</strong> Invio prospetto contabile al cliente</label></li><li class="cl-item"><input type="checkbox" id="q6"><label for="q6"><strong>6.</strong> Archiviazione documenti digitale</label></li></ul></div></div>
+    </div>
+  </div>
+
+  </main>
+</div><!-- /app -->
+
+<!-- ══════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════ -->
+<script>
+/* ── CONFIG ── */
+const CONFIG_KEY = 'studioMgr_azureConfig';
+let msalInstance = null;
+let currentUser = null;
+let isDemoMode = false;
+let accessToken = null;
+
+function getConfig() {
+  try { return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {}; } catch { return {}; }
+}
+function saveConfig() {
+  const cid = document.getElementById('cfgClientId').value.trim();
+  const tid = document.getElementById('cfgTenantId').value.trim();
+  if (!cid || !tid) { alert('Inserisci entrambi i valori.'); return; }
+  localStorage.setItem(CONFIG_KEY, JSON.stringify({ clientId: cid, tenantId: tid }));
+  document.getElementById('configModal').classList.remove('open');
+  initMsal(cid, tid);
+}
+function openConfig() {
+  const cfg = getConfig();
+  if (cfg.clientId) document.getElementById('cfgClientId').value = cfg.clientId;
+  if (cfg.tenantId) document.getElementById('cfgTenantId').value = cfg.tenantId;
+  document.getElementById('configModal').classList.add('open');
+  document.getElementById('userDropdown').classList.remove('open');
+}
+
+/* ── MSAL INIT ── */
+function initMsal(clientId, tenantId) {
+  msalInstance = new msal.PublicClientApplication({
+    auth: {
+      clientId,
+      authority: `https://login.microsoftonline.com/${tenantId}`,
+      redirectUri: window.location.href.split('?')[0].split('#')[0]
+    },
+    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+  });
+}
+
+async function signIn() {
+  const cfg = getConfig();
+  if (!cfg.clientId || !cfg.tenantId) { openConfig(); return; }
+  if (!msalInstance) initMsal(cfg.clientId, cfg.tenantId);
+  showLoginError('');
+  try {
+    const result = await msalInstance.loginPopup({
+      scopes: ['User.Read', 'Mail.Read', 'Calendars.Read', 'Files.ReadWrite', 'Sites.ReadWrite.All']
+    });
+    currentUser = result.account;
+    accessToken = result.accessToken;
+    await enterApp(currentUser);
+  } catch(e) {
+    if (e.errorCode !== 'user_cancelled') showLoginError('Errore login: ' + (e.message || e.errorCode));
+  }
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg;
+}
+
+/* ── DEMO MODE ── */
+function useDemoMode() {
+  isDemoMode = true;
+  document.getElementById('configModal').classList.remove('open');
+  enterApp({ name: 'Titolare Studio', username: 'demo@studio.local' });
+}
+
+/* ── ENTER APP ── */
+async function enterApp(account) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+
+  const name = account.name || account.displayName || 'Utente';
+  const email = account.username || account.mail || '';
+  const initials = name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  const role = getRoleFromEmail(email);
+
+  document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userName').textContent = name.split(' ')[0];
+  document.getElementById('userRoleBadge').textContent = role.label;
+  document.getElementById('ddName').textContent = name;
+  document.getElementById('ddEmail').textContent = email;
+
+  applyRolePermissions(role);
+
+  // Load Outlook data
+  await Promise.all([loadCalendar(), loadEmails()]);
+}
+
+/* ── ROLE SYSTEM ── */
+const ROLES = {
+  titolare:   { label: 'Titolare',   tabs: ['dashboard','outlook','scadenze','pratiche','personale','clienti','procedure'] },
+  senior:     { label: 'Senior',     tabs: ['dashboard','outlook','scadenze','pratiche','clienti','procedure'] },
+  contabile:  { label: 'Contabile',  tabs: ['dashboard','scadenze','pratiche','procedure'] },
+  praticante: { label: 'Praticante', tabs: ['dashboard','scadenze','pratiche','procedure'] },
+  segreteria: { label: 'Segreteria', tabs: ['dashboard','clienti','procedure'] },
+};
+const EMAIL_ROLE_MAP = {
+  'rossi':    'senior',
+  'bianchi':  'praticante',
+  'verdi':    'contabile',
+  'neri':     'segreteria',
+  'titolare': 'titolare',
+  'demo':     'titolare',
+};
+
+function getRoleFromEmail(email) {
+  const local = email.split('@')[0].toLowerCase();
+  for (const [key, role] of Object.entries(EMAIL_ROLE_MAP)) {
+    if (local.includes(key)) return ROLES[role];
+  }
+  return ROLES.titolare;
+}
+
+function applyRolePermissions(role) {
+  const allTabs = ['dashboard','outlook','scadenze','pratiche','personale','clienti','procedure'];
+  allTabs.forEach(id => {
+    const tab = document.querySelector(`[data-tab="${id}"]`);
+    if (tab) tab.classList.toggle('hidden', !role.tabs.includes(id));
+  });
+  if (!role.tabs.includes('personale')) {
+    const n = document.getElementById('roleNotice');
+    n.style.display = 'block';
+    n.textContent = `Vista limitata al ruolo "${role.label}" — alcune sezioni non sono accessibili.`;
+  }
+}
+
+/* ── NAVIGATION ── */
+function show(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  else { const t = document.querySelector(`[data-tab="${id}"]`); if(t) t.classList.add('active'); }
+  if (id === 'outlook') { loadCalendar(); loadEmails(); }
+  document.getElementById('userDropdown').classList.remove('open');
+}
+
+function toggleDropdown() {
+  document.getElementById('userDropdown').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.topbar-user') && !e.target.closest('.user-dropdown'))
+    document.getElementById('userDropdown').classList.remove('open');
+});
+
+/* ── SIGN OUT ── */
+async function signOut() {
+  if (isDemoMode) { location.reload(); return; }
+  if (msalInstance && currentUser) {
+    try { await msalInstance.logoutPopup({ account: currentUser }); } catch {}
+  }
+  location.reload();
+}
+
+/* ── GET ACCESS TOKEN ── */
+async function getToken() {
+  if (isDemoMode) return null;
+  if (!msalInstance || !currentUser) return null;
+  try {
+    const result = await msalInstance.acquireTokenSilent({
+      scopes: ['Mail.Read', 'Calendars.Read'],
+      account: currentUser
+    });
+    return result.accessToken;
+  } catch {
+    return null;
+  }
+}
+
+/* ── SYNC STATUS ── */
+function setSyncing(active) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot' + (active ? ' syncing' : '');
+  lbl.textContent = active ? 'Sincronizzazione...' : 'Sincronizzato';
+}
+
+/* ── CALENDAR ── */
+async function loadCalendar() {
+  setSyncing(true);
+  const panels = ['calPanel','dashCal'];
+  panels.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = '<div class="o-loading"><div class="spinner" style="display:block;margin:0 auto .4rem"></div>Caricamento calendario...</div>'; });
+
+  if (isDemoMode) { renderCalendar(demoEvents()); setSyncing(false); return; }
+
+  const token = await getToken();
+  if (!token) { renderCalendarError('Token non disponibile.'); setSyncing(false); return; }
+
+  try {
+    const now = new Date().toISOString();
+    const end = new Date(Date.now() + 14*86400000).toISOString();
+    const url = `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${now}&endDateTime=${end}&$top=20&$orderby=start/dateTime&$select=subject,start,end,location`;
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error('Graph API: ' + res.status);
+    const data = await res.json();
+    renderCalendar(data.value || []);
+  } catch(e) {
+    renderCalendarError(e.message);
+  }
+  setSyncing(false);
+}
+
+function renderCalendar(events) {
+  if (!events || events.length === 0) {
+    const h = '<div class="e-empty">Nessun appuntamento nei prossimi 14 giorni</div>';
+    ['calPanel','dashCal'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = h; });
+    document.getElementById('calBadge').textContent = '0 eventi';
+    return;
+  }
+  const colors = ['#0078d4','#2a6e47','#c5a84f','#b83030','#a05010'];
+  let html = '';
+  events.slice(0,8).forEach((ev,i) => {
+    const title = ev.subject || '(Nessun oggetto)';
+    const start = ev.start?.dateTime || '';
+    const loc = ev.location?.displayName || '';
+    const d = start ? new Date(start) : null;
+    const day = d ? d.getDate() : '?';
+    const time = d ? d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) : '';
+    html += `<div class="c-item"><div class="c-time"><div style="font-size:.9rem;font-weight:600">${day}</div><div>${time}</div></div><div class="c-dot" style="background:${colors[i%colors.length]}"></div><div><div class="c-title">${title}</div><div class="c-sub">${loc||'&nbsp;'}</div></div></div>`;
+  });
+  ['calPanel','dashCal'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = html; });
+  document.getElementById('calBadge').textContent = events.length + ' eventi';
+}
+
+function renderCalendarError(msg) {
+  const h = `<div class="e-err">⚠ Errore calendario: ${msg}</div>`;
+  ['calPanel','dashCal'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = h; });
+}
+
+/* ── EMAILS ── */
+async function loadEmails() {
+  const panels = ['emailPanel','dashEmail'];
+  panels.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = '<div class="o-loading"><div class="spinner" style="display:block;margin:0 auto .4rem"></div>Caricamento email...</div>'; });
+
+  if (isDemoMode) { renderEmails(demoEmails()); setSyncing(false); return; }
+
+  const token = await getToken();
+  if (!token) { renderEmailError('Token non disponibile.'); return; }
+
+  try {
+    // Unread emails not replied to: isRead=false, and no replyTo flag
+    const url = `https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$filter=isRead eq false&$top=25&$orderby=receivedDateTime desc&$select=subject,from,receivedDateTime,isRead,flag`;
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error('Graph API: ' + res.status);
+    const data = await res.json();
+    const msgs = (data.value || []).filter(m => m.flag?.flagStatus !== 'complete');
+    renderEmails(msgs);
+  } catch(e) {
+    renderEmailError(e.message);
+  }
+}
+
+function renderEmails(emails) {
+  updateEmailBadge(emails.length);
+  if (!emails || emails.length === 0) {
+    const h = '<div class="e-empty">✓ Nessuna email senza risposta — ottimo!</div>';
+    ['emailPanel','dashEmail'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = h; });
+    return;
+  }
+  let html = '';
+  emails.slice(0,15).forEach(em => {
+    const subj = em.subject || '(Nessun oggetto)';
+    const fromName = em.from?.emailAddress?.name || em.from?.emailAddress?.address || '?';
+    const fromAddr = em.from?.emailAddress?.address || '';
+    const recv = em.receivedDateTime ? new Date(em.receivedDateTime) : null;
+    const timeStr = recv ? relDate(recv) : '';
+    const unread = !em.isRead;
+    html += `<div class="e-item ${unread?'e-unread':''}"><div class="e-dot ${unread?'':'r'}"></div><div class="e-meta"><div class="e-from" title="${fromAddr}">${fromName}</div><div class="e-subj">${subj}</div><div class="e-addr">${fromAddr}</div></div><div class="e-time">${timeStr}</div></div>`;
+  });
+  ['emailPanel','dashEmail'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = html; });
+}
+
+function renderEmailError(msg) {
+  const h = `<div class="e-err">⚠ Errore email: ${msg}</div>`;
+  ['emailPanel','dashEmail'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = h; });
+}
+
+function updateEmailBadge(n) {
+  document.getElementById('kpiEmail').textContent = n === 0 ? '0' : n;
+  document.getElementById('kpiSub').textContent = n === 0 ? 'Nessuna in attesa' : 'da rispondere';
+  document.getElementById('emailBadgeDash').textContent = n;
+  document.getElementById('emailCntLabel').textContent = n + ' email';
+  const tb = document.getElementById('tbEmail');
+  tb.style.display = n > 0 ? 'inline' : 'none';
+  tb.textContent = n;
+  const al = document.getElementById('alertOutlook');
+  if (al) {
+    al.className = 'alert ' + (n > 0 ? 'red' : 'green');
+    al.innerHTML = n > 0
+      ? `📧 <strong>${n} email senza risposta</strong> — vai su <a href="#" onclick="show('outlook')" style="color:inherit;font-weight:700">Outlook</a> per il dettaglio`
+      : '✅ Outlook connesso — nessuna email senza risposta';
+  }
+}
+
+/* ── DEMO DATA ── */
+function demoEvents() {
+  const base = Date.now();
+  return [
+    { subject:'Consulenza — Sig. Marini', start:{ dateTime: new Date(base+86400000).toISOString() }, location:{ displayName:'Studio' } },
+    { subject:'Firma Bilancio — Alpha Srl', start:{ dateTime: new Date(base+3*86400000).toISOString() }, location:{ displayName:'Studio' } },
+    { subject:'Teleconferenza — Studio Legale Nardi', start:{ dateTime: new Date(base+5*86400000).toISOString() }, location:{ displayName:'Teams' } },
+    { subject:'Scadenza F24 IVA — 31/05', start:{ dateTime: new Date(base+4*86400000).toISOString() }, location:{ displayName:'Adempimento' } },
+    { subject:'Riunione interna — Pianificazione giugno', start:{ dateTime: new Date(base+7*86400000).toISOString() }, location:{ displayName:'Studio' } },
+  ];
+}
+function demoEmails() {
+  return [
+    { subject:'Documentazione 730 — invio CU mancante', from:{ emailAddress:{ name:'Mario Ferri', address:'m.ferri@example.it' } }, receivedDateTime: new Date(Date.now()-3600000*2).toISOString(), isRead:false },
+    { subject:'Richiesta consulenza apertura SRL', from:{ emailAddress:{ name:'Giulia Ricci', address:'g.ricci@example.it' } }, receivedDateTime: new Date(Date.now()-3600000*5).toISOString(), isRead:false },
+    { subject:'F24 maggio — estratto conto allegato', from:{ emailAddress:{ name:'Beta Servizi Srl', address:'info@betaservizi.it' } }, receivedDateTime: new Date(Date.now()-86400000).toISOString(), isRead:false },
+    { subject:'Chiarimenti visura catastale IMU', from:{ emailAddress:{ name:'Roberto De Luca', address:'r.deluca@example.it' } }, receivedDateTime: new Date(Date.now()-86400000*2).toISOString(), isRead:false },
+  ];
+}
+
+/* ── HELPERS ── */
+function relDate(d) {
+  const diff = Date.now() - d;
+  const m = Math.floor(diff/60000), h = Math.floor(diff/3600000), days = Math.floor(diff/86400000);
+  if (m < 60) return m + 'm fa';
+  if (h < 24) return h + 'h fa';
+  if (days === 1) return 'ieri';
+  if (days < 7) return days + 'gg fa';
+  return d.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'});
+}
+
+/* ── INIT ── */
+window.addEventListener('DOMContentLoaded', () => {
+  const cfg = getConfig();
+  if (cfg.clientId && cfg.tenantId) {
+    initMsal(cfg.clientId, cfg.tenantId);
+    // Handle redirect after login
+    msalInstance.handleRedirectPromise().then(result => {
+      if (result) { currentUser = result.account; enterApp(currentUser); }
+    }).catch(() => {});
+    // Check for existing session
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) { currentUser = accounts[0]; enterApp(currentUser); }
+  }
+});
+</script>
+</body>
+</html>
